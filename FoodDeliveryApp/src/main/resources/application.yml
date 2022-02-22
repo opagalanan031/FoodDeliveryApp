@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: jdbc:mysql://LocalHost:3306/jpa_db
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    
+  jpa:
+    properties:
+      hibernate:
+      dialect: org.hibernate.dialect.MySQL8Dialect
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+      naming:
+        physical-strategy: com.learning.utils.CustomNamingStrategy
+        
+server:
+  port: 9015
+  servlet:
+    context-path: /api
+
+com:
+  learning:
+    jwtSecret:foodapp
+    jwtExpirationMs:86400000

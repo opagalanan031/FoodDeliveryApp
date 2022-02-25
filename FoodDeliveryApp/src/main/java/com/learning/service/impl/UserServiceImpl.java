@@ -15,7 +15,7 @@ public class UserServiceImpl implements UserService {
 
 	@Autowired
 	UserRepository userRepository;
-	
+
 	@Override
 	public User addUser(User user) {
 		return userRepository.save(user);
@@ -39,27 +39,22 @@ public class UserServiceImpl implements UserService {
 
 	@Override
 	public User updateUser(User user) {
-		// TODO Auto-generated method stub
-		return null;
+		return userRepository.save(user);		
 	}
 
 	@Override
 	public List<User> getAllUsersAscOrder() {
-		// TODO Auto-generated method stub
-		return null;
+		return userRepository.findAll();
 	}
 
 	@Override
 	public List<User> getAllUsersDescOrder() {
-		// TODO Auto-generated method stub
-		return null;
+		return userRepository.findAll();
 	}
 
 	@Override
 	public boolean existsByUserId(long id) {
 		return userRepository.existsById(id);
 	}
-	
-	
 
 }

@@ -103,13 +103,15 @@ public class AuthController {
 		User addedUser = userService.addUser(user);
 		
 		return ResponseEntity.status(201).body(addedUser);
+		// java -> JSON -> jackson api
 	}
 	
 	@PostMapping("/login")
 	public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
 		Authentication authentication = authenticationManager.
 				authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
-				
+		
+		// to handle the entire stuff in a single-threaded environment
 		SecurityContextHolder.getContext().setAuthentication(authentication);
 		String jwt = jwtUtils.generateToken(authentication);
 		

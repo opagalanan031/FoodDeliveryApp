@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class FoodRequest {
+
 	@NotBlank
 	private String foodName;
 	@NotBlank

@@ -39,7 +39,7 @@ public class FoodController {
 	
 	@PostMapping("/add")
 	@PreAuthorize("hasRole('ADMIN')")
-	public ResponseEntity<?> addFood( @RequestBody Food food) {
+	public ResponseEntity<?> addFood(@Valid @RequestBody Food food) {
 		
 		Food newFood = foodRepository.save(food);
 		
@@ -78,10 +78,11 @@ public class FoodController {
 	}
 	
 	@PutMapping("/{foodId}")
+	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<?> updateFood(@Valid @PathVariable("foodId") long foodId, @RequestBody FoodRequest foodRequest)  {
 		
 		if(foodRepository.existsById(foodId)) {
-			Food updatedFood = foodRepository.getById(foodId);
+			Food updatedFood = foodRepository.findById(foodId).get();
 			
 			updatedFood.setFoodName(foodRequest.getFoodName());
 			updatedFood.setDescription(foodRequest.getDescription());
@@ -121,6 +122,7 @@ public class FoodController {
 	}
 	
 	@DeleteMapping("/{foodId}")
+	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<?> deleteFoodById(@PathVariable("foodId") long foodId) {
 		
 		if(foodRepository.existsById(foodId)) {

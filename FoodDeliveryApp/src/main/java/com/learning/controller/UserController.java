@@ -3,39 +3,34 @@ package com.learning.controller;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
-
 import java.util.Set;
 
 import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-
 import com.learning.dto.Address;
-//import com.learning.dto.Cart;
+import com.learning.dto.Cart;
 import com.learning.dto.Food;
-import com.learning.dto.Role;
 import com.learning.dto.User;
-import com.learning.enums.Roles;
 import com.learning.exception.DataNotFoundException;
-import com.learning.exception.IdNotFoundException;
-//import com.learning.payload.request.CartRequest;
-//import com.learning.payload.request.LoginRequest;
-import com.learning.payload.request.SignupRequest;
+import com.learning.payload.request.CartRequest;
+import com.learning.payload.request.UpdateUserRequest;
 import com.learning.payload.response.UserResponse;
-//import com.learning.repository.CartRepository;
+import com.learning.repository.CartRepository;
 import com.learning.repository.FoodRepository;
-import com.learning.repository.RoleRepository;
 import com.learning.service.UserService;
 
 @RestController
@@ -45,14 +40,15 @@ public class UserController {
 	@Autowired
 	private UserService userService;
 	@Autowired
-	private RoleRepository roleRepository;
-	@Autowired
 	private FoodRepository foodRepository;
-	//@Autowired
-	//private CartRepository cartRepository;
+	@Autowired
+	private CartRepository cartRepository;
+	@Autowired
+	PasswordEncoder passwordEncoder;
 	
 	
 	@GetMapping("/all")
+	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<?> getAllUsers() {
 		List<User> list = userService.getAllUsers();
 		List<UserResponse> userResponses = new ArrayList<>();
@@ -89,6 +85,7 @@ public class UserController {
 	}
 	
 	@GetMapping("/{userId}")
+	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<?> getUserById(@PathVariable("userId") long userId) {
 		
 		User user =	userService.getUserById(userId).orElseThrow(()->new DataNotFoundException("data not available"));
@@ -118,14 +115,15 @@ public class UserController {
 	}
 	
 	@PutMapping("/{userId}")
-	public ResponseEntity<?> updateUser(@PathVariable("userId") long userId, @RequestBody SignupRequest signupRequest) {
+	@PreAuthorize("hasRole('ADMIN','USER')")
+	public ResponseEntity<?> updateUser(@Valid @PathVariable("userId") long userId, @RequestBody UpdateUserRequest updateUserRequest) {
 			
 		if(userService.existsByUserId(userId)) {			
 			
 			User user = userService.getUserById(userId).get();
 			
 			Set<Address> addresses = new HashSet<>();
-			signupRequest.getAddress().forEach(e->{
+			updateUserRequest.getAddress().forEach(e->{
 				Address address = new Address();
 				address.setHouseNo(e.getHouseNo());
 				address.setStreet(e.getStreet());
@@ -137,12 +135,9 @@ public class UserController {
 				addresses.add(address);
 			});
 			
-			user.setAddresses(addresses);
-			user.setUsername(signupRequest.getName());
-			user.setEmail(signupRequest.getEmail());
-			user.setPassword(signupRequest.getPassword());
-			//user.setRoles(roles);
-			user.setDoj(signupRequest.getDoj());
+			user.setUsername(updateUserRequest.getName());
+			user.setEmail(updateUserRequest.getEmail());
+			user.setPassword(passwordEncoder.encode(updateUserRequest.getPassword()));
 			
 			User updatedUser = userService.updateUser(user);
 			
@@ -153,6 +148,7 @@ public class UserController {
 	}
 	
 	@DeleteMapping("/{userId}")
+	@PreAuthorize("hasRole('ADMIN', 'USER')")
 	public ResponseEntity<?> deleteUserById(@PathVariable("userId") long userId)  {
 		
 		// check if user exists or not
@@ -166,6 +162,7 @@ public class UserController {
 	}
 	
 	@GetMapping("/desc")
+	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<?> getAllDescOrder() {
 		List<User> list = userService.getAllUsersDescOrder();
 		
@@ -175,6 +172,7 @@ public class UserController {
 	}
 	
 	@GetMapping("/asc")
+	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<?> getAllAscOrder() {
 		List<User> list = userService.getAllUsersAscOrder();
 		
@@ -183,36 +181,75 @@ public class UserController {
 		return ResponseEntity.status(200).body(list);
 	}
 	
-//	@PutMapping("/{userId}/cart")
-//	public ResponseEntity<?> addToCart(@PathVariable("userId") long userId, CartRequest cartRequest) {
-//		
-//		User user = userService.getUserById(userId).get();
-//		List<Food> foods = foodRepository.findAll();
-//		Cart cart = new Cart();
-//		
-//		Set<Food> foodCart = new HashSet<>();
-//		cartRequest.getFoodCart().forEach(e->{
-//			for(int i = 0; i < foods.size(); i++) {
-//				if(e.equals(foods.get(i).getFoodName())) {
-//					foodCart.add(foods.get(i));
-//				}
-//			}
-//			
-//		});
-//		
-//		cart.setUserId(user.getUserId());
-//		cart.setFoodCart(foodCart);
-//		cart.setStatus("active");
-//		
-//		cartRepository.save(cart);
-//		
-//		List<String> list = new ArrayList<>();
-//		cart.getFoodCart().forEach(e->{
-//			list.add(e.getFoodName());
-//		});
-//		
-//		return ResponseEntity.status(200).body(list);
-//	}
+	@PutMapping("/{userId}/cart")
+	@PreAuthorize("hasRole('USER')")
+	public ResponseEntity<?> addToCart(@Valid @PathVariable("userId") long userId, @RequestBody CartRequest cartRequest) {
+		
+		if(userService.existsByUserId(userId)) {
+			User user = userService.getUserById(userId).get();
+			List<Food> foods = foodRepository.findAll();
+			Cart cart = new Cart();
+			
+			List<Food> foodCart = new LinkedList<>();
+			cartRequest.getFoodCart().forEach(e->{
+				for(int i = 0; i < foods.size(); i++) {
+					if(e.equals(foods.get(i).getFoodName())) {
+						foodCart.add(foods.get(i));
+					}
+				}
+				
+			});
+			
+			cart.setUserId(userId);
+			cart.setCartId(userId);
+			cart.setUser(user);
+			cart.setFoodCart(foodCart);
+			cart.setStatus("active");
+			
+			cartRepository.save(cart);
+			
+			List<String> list = new ArrayList<>();
+			cart.getFoodCart().forEach(e->{
+				list.add(e.getFoodName());
+			});
+			
+			return ResponseEntity.status(200).body(list);
+		} else {
+			throw new DataNotFoundException("record not found");
+		}
+		
+		
+	}
+	
+	@PutMapping("/{userId}/cart/checkout")
+	@PreAuthorize("hasRole('USER')")
+	public ResponseEntity<?> checkout(@Valid @PathVariable("userId") long userId, @RequestBody CartRequest cartRequest) {
+		
+		if(userService.existsByUserId(userId)) {
+			Cart cart = cartRepository.getById(userId);
+			
+			List<Food> foodCart = cart.getFoodCart();
+			cartRequest.getFoodCart().forEach(e->{
+				for(int i = 0; i < foodCart.size(); i++) {
+					if(e.equals(foodCart.get(i).getFoodName())) {
+						foodCart.remove(i);
+					}
+				}
+				
+			});
+			
+			cart.setStatus("not active");
+			
+			cartRepository.save(cart);
+			
+			
+			return ResponseEntity.status(200).body(cart.getFoodCart());
+		} else {
+			throw new DataNotFoundException("record not found");
+		}
+		
+		
+	}
 	
 	
 }

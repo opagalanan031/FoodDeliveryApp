@@ -39,8 +39,8 @@ public class User {
 	
 	@Id
 	@GeneratedValue(strategy=GenerationType.AUTO)
-	private long userId;
-	private String name;
+	private Long userId;
+	private String username;
 	private String email;
 	private String password;
 	@JsonFormat(pattern="yyyy-MM-dd")

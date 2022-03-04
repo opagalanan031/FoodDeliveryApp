@@ -8,8 +8,8 @@ import javax.validation.Valid;
 import javax.validation.constraints.Min;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,12 +23,13 @@ import org.springframework.web.bind.annotation.RestController;
 import com.learning.dto.Food;
 import com.learning.enums.FoodType;
 import com.learning.exception.DataNotFoundException;
+import com.learning.payload.request.FoodRequest;
 import com.learning.payload.response.FoodResponse;
 import com.learning.repository.FoodRepository;
 
-@Validated	// validates inside the argument
+@Validated	// validates from inside the argument
 @RestController	// combination of @Controller and @ResponseBody
-@RequestMapping("/food")
+@RequestMapping("/api/food")
 public class FoodController {
 	
 	
@@ -36,7 +37,8 @@ public class FoodController {
 	FoodRepository foodRepository;
 	
 	
-	@PostMapping("")
+	@PostMapping("/add")
+	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<?> addFood(@Valid @RequestBody Food food) {
 		
 		Food newFood = foodRepository.save(food);
@@ -75,24 +77,26 @@ public class FoodController {
 	
 	}
 	
-	//@PutMapping("/food/updateFood/{foodId}")
-	//public Food updateFood(@Valid @PathVariable("foodId") long foodId, @RequestBody Food newFoodItem) throws FoodNotFoundException {
+	@PutMapping("/{foodId}")
+	@PreAuthorize("hasRole('ADMIN')")
+	public ResponseEntity<?> updateFood(@Valid @PathVariable("foodId") long foodId, @RequestBody FoodRequest foodRequest)  {
 		
+		if(foodRepository.existsById(foodId)) {
+			Food updatedFood = foodRepository.findById(foodId).get();
+			
+			updatedFood.setFoodName(foodRequest.getFoodName());
+			updatedFood.setDescription(foodRequest.getDescription());
+			updatedFood.setFoodCost(foodRequest.getFoodCost());
+			updatedFood.setFoodPic(foodRequest.getFoodPic());
+			updatedFood.setFoodType(foodRequest.getFoodType());
 		
+			foodRepository.save(updatedFood);
+			return ResponseEntity.status(200).body(updatedFood);
+		} else {
+			throw new DataNotFoundException("record not found");
+		}
 		
-	//	return foodItemRepo.findById(foodId)
-			//	.map(foodItem -> {
-			//		foodItem.setFoodName(newFoodItem.getFoodName());
-			//		foodItem.setFoodCost(newFoodItem.getFoodCost());
-			//		//foodItem.setFoodType(newFoodItem.getFoodType());
-			//		foodItem.setDescription(newFoodItem.getDescription());
-			//		foodItem.setFoodPic(newFoodItem.getFoodPic());
-			//		return foodItemRepo.save(foodItem);
-			//	}).orElseGet(() -> {
-			//		newFoodItem.setFoodId(foodId);
-			//		return foodItemRepo.save(newFoodItem);
-			//	});
-	//}
+	}
 	
 	@GetMapping("/type/{foodType}")
 	public ResponseEntity<?> getFoodByType(@PathVariable("foodType") FoodType foodType) {
@@ -118,6 +122,7 @@ public class FoodController {
 	}
 	
 	@DeleteMapping("/{foodId}")
+	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<?> deleteFoodById(@PathVariable("foodId") long foodId) {
 		
 		if(foodRepository.existsById(foodId)) {
